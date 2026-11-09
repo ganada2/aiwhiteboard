@@ -1,0 +1,40 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Apps in Toss: 개발 서버 실행 (dev)",
+      "type": "shell",
+      "command": "npm.cmd run dev",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Apps in Toss: 빌드 및 aiboard.ait 패키징 (build)",
+      "type": "shell",
+      "command": "npm.cmd run build",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": ["$tsc"]
+    },
+    {
+      "label": "Apps in Toss: 콘솔 배포 (ait deploy)",
+      "type": "shell",
+      "command": "npm.cmd run deploy",
+      "problemMatcher": []
+    },
+    {
+      "label": "Apps in Toss: API 키 프로필 등록 (ait token add)",
+      "type": "shell",
+      "command": "npm.cmd run token:add",
+      "problemMatcher": []
+    },
+    {
+      "label": "AI 칠판: 서버 체크리스트 7대 테스트 실행",
+      "type": "shell",
+      "command": "npm.cmd test",
+      "problemMatcher": []
+    }
+  ]
+}
