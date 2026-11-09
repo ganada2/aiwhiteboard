@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="toss-light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PATHWAY 계층형 카드 승인 플로우차트 | Toss · macOS Edition</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <!-- 상단 macOS / Toss 글래스모피즘 네비게이션 바 -->
+  <header class="glass-nav">
+    <div class="nav-inner">
+      <div class="brand-area">
+        <div class="toss-logo-mark" aria-hidden="true">
+          <span class="logo-card-chip"></span>
+        </div>
+        <div>
+          <div class="eyebrow">
+            <span id="live-dot" class="live-dot active"></span>
+            <span id="stream-state-label">실시간 자동 승인 요청 중 · 1.0초 주기</span>
+          </div>
+          <h1>PATHWAY 카드 승인 계층형(Layered) 플로우 모니터</h1>
+        </div>
+      </div>
+
+      <div class="stream-controls">
+        <div class="seg-control" id="theme-switch" role="group" aria-label="테마 선택">
+          <button type="button" class="seg-btn active" data-theme-val="toss-light">토스 라이트</button>
+          <button type="button" class="seg-btn" data-theme-val="macos-dark">macOS 다크</button>
+        </div>
+
+        <div class="tick-capsule" title="다음 자동 거래 요청 진행률">
+          <span class="tick-label">주기</span>
+          <div class="tick-progress-wrap">
+            <div id="tick-progress" class="tick-progress"></div>
+          </div>
+          <select id="sel-interval" class="ctrl-select" aria-label="자동 요청 주기">
+            <option value="700">0.7초</option>
+            <option value="1000" selected>1.0초</option>
+            <option value="2000">2.0초</option>
+          </select>
+        </div>
+
+        <button id="btn-toggle-stream" class="btn btn-toss-primary" type="button">일시정지</button>
+        <button id="btn-echo" class="btn btn-toss-soft" type="button">0800 개시</button>
+        <button id="btn-reset" class="btn btn-toss-danger" type="button">초기화</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="app-shell">
+    <!-- 토스 스타일 요약 지표 카드 5종 -->
+    <section class="kpi-strip">
+      <div class="toss-card kpi-card">
+        <span class="kpi-label">누적 거래 요청</span>
+        <strong class="kpi-value" id="kpi-total">0건</strong>
+        <span class="kpi-sub" id="kpi-last-scenario">자동 스트림 준비 중</span>
+      </div>
+      <div class="toss-card kpi-card">
+        <span class="kpi-label">승인 성공률</span>
+        <strong class="kpi-value text-ok" id="kpi-rate">0.0%</strong>
+        <span class="kpi-sub" id="kpi-ok-err">승인 0 · 거절 0</span>
+      </div>
+      <div class="toss-card kpi-card">
+        <span class="kpi-label">응답 속도 (RTT)</span>
+        <strong class="kpi-value text-blue" id="kpi-latency">0 ms</strong>
+        <span class="kpi-sub" id="kpi-avg-latency">평균 0 ms</span>
+      </div>
+      <div class="toss-card kpi-card">
+        <span class="kpi-label">DB 원장 저널 기록</span>
+        <strong class="kpi-value" id="kpi-journal">0건</strong>
+        <span class="kpi-sub">TB_TX_JOURNAL 누적 건수</span>
+      </div>
+      <div class="toss-card kpi-card">
+        <span class="kpi-label">SAF 망취소 DB 큐</span>
+        <strong class="kpi-value text-warn" id="kpi-saf">0건</strong>
+        <span class="kpi-sub">TB_SAF_REVERSAL 적재 건수</span>
+      </div>
+    </section>
+
+    <!-- 토스 캡슐형 시나리오 원클릭 바 -->
+    <section class="toss-card scenario-bar">
+      <span class="scenario-title">시나리오 즉시 주입</span>
+      <div class="preset-chips" id="preset-grid">
+        <button class="chip chip-primary" data-preset="normal">정상 승인</button>
+        <button class="chip" data-preset="duplicate">중복 거래 94</button>
+        <button class="chip" data-preset="lost">분실 카드 41</button>
+        <button class="chip" data-preset="stolen">도난 카드 43</button>
+        <button class="chip" data-preset="limit">한도 초과 51</button>
+        <button class="chip" data-preset="expired">만료 카드 54</button>
+        <button class="chip" data-preset="merchant">정지 가맹점 03</button>
+        <button class="chip" data-preset="badpin">PIN 오류 55</button>
+        <button class="chip" data-preset="cancel">승인 취소 0400</button>
+        <button class="chip chip-warn" data-preset="timeout">타임아웃 · SAF 91</button>
+      </div>
+    </section>
+
+    <!-- 메인 macOS 윈도우 프레임 + 4-Layer 스윔레인 아키텍처 플로우차트 -->
+    <section class="macos-window">
+      <div class="macos-titlebar">
+        <div class="traffic-lights" aria-hidden="true">
+          <span class="tl tl-close"></span>
+          <span class="tl tl-min"></span>
+          <span class="tl tl-max"></span>
+        </div>
+        <div class="window-title">HPE NonStop PATHWAY — 계층별(FEP · 서비스 · DB) 실시간 호출 흐름도</div>
+        <div id="tx-live-pill" class="tx-live-pill pill-idle">
+          <span class="pill-rc" id="banner-rc">대기</span>
+          <span id="banner-summary">트랜잭션 수신 대기 중</span>
+        </div>
+      </div>
+
+      <div class="window-body">
+        <!-- SVG 오버레이 + 4개 아키텍처 Layer 스윔레인 -->
+        <div id="flowchart-stage" class="flowchart-stage">
+          <svg id="flowchart-svg" class="flowchart-svg" aria-hidden="true">
+            <defs>
+              <marker id="arrow-idle" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1.5 L 9.5 5 L 0 8.5 z" class="marker-idle"></path>
+              </marker>
+              <marker id="arrow-pass" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1.5 L 9.5 5 L 0 8.5 z" class="marker-pass"></path>
+              </marker>
+              <marker id="arrow-reject" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1.5 L 9.5 5 L 0 8.5 z" class="marker-reject"></path>
+              </marker>
+              <marker id="arrow-alert" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1.5 L 9.5 5 L 0 8.5 z" class="marker-alert"></path>
+              </marker>
+            </defs>
+            <!-- Layer 간 및 Layer 내부 연결 엣지 -->
+            <path id="edge-fep-auth" class="fc-edge" />
+            <path id="edge-auth-hsm" class="fc-edge" />
+            <path id="edge-hsm-mch" class="fc-edge" />
+            <path id="edge-svc-jrnl" class="fc-edge" />
+            <path id="edge-svc-jrnl-err" class="fc-edge" />
+            <path id="edge-jrnl-host" class="fc-edge" />
+            <path id="edge-host-saf" class="fc-edge" />
+            <path id="edge-jrnl-reply" class="fc-edge" />
+            <path id="edge-host-reply" class="fc-edge" />
+            <path id="edge-saf-reply" class="fc-edge" />
+            <path id="edge-early-reply" class="fc-edge" />
+          </svg>
+
+          <!-- ==================== LAYER 1: FEP 전문 수신부 ==================== -->
+          <div id="lane-fep-in" class="arch-lane lane-fep">
+            <div class="lane-sidebar">
+              <span class="lane-step-tag tag-blue">LAYER 01 · INGRESS</span>
+              <strong class="lane-name">FEP 전문 수신부</strong>
+              <span class="lane-desc">대외 VAN 회선 인터페이스<br/>112B ISO 8583 전문 파싱</span>
+              <span id="lane-status-fep-in" class="lane-live-chip">대기</span>
+            </div>
+            <div class="lane-nodes lane-nodes-center">
+              <div id="node-fep-in" class="fc-node fc-node-wide st-idle">
+                <div class="fc-node-head">
+                  <span class="fc-node-icon icon-blue">⇄</span>
+                  <span class="fc-node-code">FEP-GW ($RECEIVE)</span>
+                  <span class="fc-meta-chip">TCP · ISO 8583</span>
+                  <span class="fc-node-badge" id="badge-fep-in">대기</span>
+                </div>
+                <div class="fc-node-title">대외 요청 전문 수신 및 고정길이 파싱</div>
+                <div class="fc-node-detail" id="detail-fep-in">parseAuthRequest() · 112B 전문 수신 대기</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ==================== LAYER 2: 서비스 처리부 ==================== -->
+          <div id="lane-service" class="arch-lane lane-service">
+            <div class="lane-sidebar">
+              <span class="lane-step-tag tag-indigo">LAYER 02 · SERVICE</span>
+              <strong class="lane-name">서비스 처리부</strong>
+              <span class="lane-desc">PATHWAY 서버클래스 라우팅<br/>보안(HSM) · 가맹점 비즈니스 검증</span>
+              <span id="lane-status-service" class="lane-live-chip">대기</span>
+            </div>
+            <div class="lane-nodes lane-nodes-3col" id="service-nodes-track">
+              <div id="node-auth" class="fc-node st-idle">
+                <div class="fc-node-head">
+                  <span class="fc-node-icon icon-blue">⚡</span>
+                  <span class="fc-node-code">AUTH-SVR</span>
+                  <span class="fc-node-badge" id="badge-auth">대기</span>
+                </div>
+                <div class="fc-node-title">승인 오케스트레이터</div>
+                <div class="fc-node-detail" id="detail-auth">MTI 분기 · Luhn · 유효기간 · 금액 검증</div>
+              </div>
+
+              <div id="node-hsm" class="fc-node st-idle">
+                <div class="fc-node-head">
+                  <span class="fc-node-icon icon-purple">🔐</span>
+                  <span class="fc-node-code">HSM-SVR</span>
+                  <span class="fc-node-badge" id="badge-hsm">대기</span>
+                </div>
+                <div class="fc-node-title">암호화 · 보안 검증 서비스</div>
+                <div class="fc-node-detail" id="detail-hsm">요청/응답 MAC 검증 · PIN 블록 복호화</div>
+              </div>
+
+              <div id="node-mch" class="fc-node st-idle">
+                <div class="fc-node-head">
+                  <span class="fc-node-icon icon-indigo">🏪</span>
+                  <span class="fc-node-code">MCH-SVR</span>
+                  <span class="fc-node-badge" id="badge-mch">대기</span>
+                </div>
+                <div class="fc-node-title">가맹점 · 단말 검증 서비스</div>
+                <div class="fc-node-detail" id="detail-mch">가맹점 정상 영업 및 단말 상태 확인</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ==================== LAYER 3: DB / 원장 처리부 ==================== -->
+          <div id="lane-db" class="arch-lane lane-db">
+            <div class="lane-sidebar">
+              <span class="lane-step-tag tag-mint">LAYER 03 · DATABASE</span>
+              <strong class="lane-name">DB · 원장 처리부</strong>
+              <span class="lane-desc">NonStop SQL/MX · ENSCRIBE<br/>TMF 트랜잭션 · 한도 · SAF 큐</span>
+              <span id="lane-status-db" class="lane-live-chip">대기</span>
+            </div>
+            <div class="lane-nodes lane-nodes-3col">
+              <div id="node-jrnl" class="fc-node fc-node-db st-idle">
+                <div class="fc-node-head">
+                  <span class="fc-node-icon icon-mint">🗄️</span>
+                  <span class="fc-node-code">JRNL-DB</span>
+                  <span class="fc-sql-chip" id="sql-jrnl">SELECT / INSERT</span>
+                  <span class="fc-node-badge" id="badge-jrnl">대기</span>
+                </div>
+                <div class="fc-node-title">거래원장 · 중복방지 DB</div>
+                <div class="fc-db-table">TB_TX_JOURNAL (ENSCRIBE)</div>
+                <div class="fc-node-detail" id="detail-jrnl">STAN+RRN 중복 조회 및 거래 저널 기록</div>
+              </div>
+
+              <div id="node-host" class="fc-node fc-node-db st-idle">
+                <div class="fc-node-head">
+                  <span class="fc-node-icon icon-mint">🛢️</span>
+                  <span class="fc-node-code">HOST-DB</span>
+                  <span class="fc-sql-chip" id="sql-host">SELECT / UPDATE</span>
+                  <span class="fc-node-badge" id="badge-host">대기</span>
+                </div>
+                <div class="fc-node-title">카드원장 · 이용한도 DB</div>
+                <div class="fc-db-table">TB_CARD_LEDGER (SQL/MX)</div>
+                <div class="fc-node-detail" id="detail-host">분실/도난 조회 · 500만 한도 차감/복원</div>
+              </div>
+
+              <div id="node-saf" class="fc-node fc-node-db fc-node-saf st-idle">
+                <div class="fc-node-head">
+                  <span class="fc-node-icon icon-amber">⚡</span>
+                  <span class="fc-node-code">SAF-DB</span>
+                  <span class="fc-sql-chip" id="sql-saf">INSERT 0420</span>
+                  <span class="fc-node-badge" id="badge-saf">대기</span>
+                </div>
+                <div class="fc-node-title">자동 망취소 복구 큐 DB</div>
+                <div class="fc-db-table">TB_SAF_REVERSAL (TMF Queue)</div>
+                <div class="fc-node-detail" id="detail-saf">호스트 타임아웃(91) 시 망취소 적재</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ==================== LAYER 4: FEP 전문 송신부 ==================== -->
+          <div id="lane-fep-out" class="arch-lane lane-fep-out">
+            <div class="lane-sidebar">
+              <span class="lane-step-tag tag-blue">LAYER 04 · EGRESS</span>
+              <strong class="lane-name">FEP 전문 송신부</strong>
+              <span class="lane-desc">ISO 8583 비트맵 · MAC 조립<br/>145B 대외 응답 전문 반환</span>
+              <span id="lane-status-fep-out" class="lane-live-chip">대기</span>
+            </div>
+            <div class="lane-nodes lane-nodes-center">
+              <div id="node-fep-out" class="fc-node fc-node-wide st-idle">
+                <div class="fc-node-head">
+                  <span class="fc-node-icon icon-blue">✓</span>
+                  <span class="fc-node-code">FEP-GW ($REPLY)</span>
+                  <span class="fc-meta-chip">145B · BITMAP+MAC</span>
+                  <span class="fc-node-badge" id="badge-fep-out">대기</span>
+                </div>
+                <div class="fc-node-title">대외 응답 전문 직렬화 및 VAN 단말 반환</div>
+                <div class="fc-node-detail" id="detail-fep-out">buildAuthResponse() · 0110 / 0410 / 0810 송신</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 단계별 호출 체인 플로우 -->
+        <div class="flow-sub-box">
+          <div class="sub-box-title">계층 간 실시간 실행 경로 (Layer-to-Layer Execution Chain)</div>
+          <div id="step-chain" class="step-chain">
+            <div class="chain-placeholder">거래가 시작되면 계층별 호출 순서가 플로우 칩으로 표시됩니다.</div>
+          </div>
+        </div>
+
+        <!-- 145B 패킷 세그먼트 블록 -->
+        <div class="flow-sub-box">
+          <div class="sub-box-title">FEP 송신부 조립 패킷 구조 (145 Bytes ISO 8583 Wire Frame)</div>
+          <div id="packet-blocks" class="packet-blocks">
+            <div class="pkt-seg pkt-mti"><span>MTI · 4B</span><strong id="pkt-mti">-</strong></div>
+            <div class="pkt-seg pkt-bm"><span>BITMAP · 16B</span><strong id="pkt-bm">-</strong></div>
+            <div class="pkt-seg pkt-pan"><span>PAN · 19B</span><strong id="pkt-pan">-</strong></div>
+            <div class="pkt-seg pkt-rc"><span>RC · 2B</span><strong id="pkt-rc">-</strong></div>
+            <div class="pkt-seg pkt-auth"><span>AUTH · 6B</span><strong id="pkt-auth">-</strong></div>
+            <div class="pkt-seg pkt-stan"><span>STAN · 6B</span><strong id="pkt-stan">-</strong></div>
+            <div class="pkt-seg pkt-rrn"><span>RRN · 12B</span><strong id="pkt-rrn">-</strong></div>
+            <div class="pkt-seg pkt-msg"><span>MSG · 64B</span><strong id="pkt-msg">-</strong></div>
+            <div class="pkt-seg pkt-mac"><span>MAC · 16B</span><strong id="pkt-mac">-</strong></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 하단 토스 앱 스타일 DB 원장 한도 게이지 & 실시간 거래 피드 -->
+    <section class="visual-boards">
+      <div class="board-col">
+        <div class="toss-card">
+          <div class="board-header">
+            <div>
+              <h2>TB_CARD_LEDGER · 카드별 이용한도</h2>
+              <p class="card-caption">DB · 원장 처리부 실시간 한도 차감 및 취소 복원</p>
+            </div>
+            <span class="toss-badge" id="ledger-count">0개 카드</span>
+          </div>
+          <div id="ledger-cards" class="gauge-card-list">
+            <div class="empty-flow-card">승인 거래가 실행되면 카드 한도 원장이 표시됩니다.</div>
+          </div>
+        </div>
+
+        <div class="toss-card">
+          <div class="board-header">
+            <div>
+              <h2>TB_SAF_REVERSAL · 망취소 복구 큐</h2>
+              <p class="card-caption">HOST-DB 타임아웃(RC=91) 발생 시 적재된 큐</p>
+            </div>
+            <span class="toss-badge badge-amber" id="saf-count">0건</span>
+          </div>
+          <div id="saf-cards" class="saf-flow-list">
+            <div class="empty-flow-card">대기 중인 자동 망취소 레코드가 없습니다.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="toss-card">
+        <div class="board-header">
+          <div>
+            <h2>TB_TX_JOURNAL · 실시간 거래 저널 피드</h2>
+            <p class="card-caption">1초 주기로 기록되는 DB 원장 트랜잭션 스트림</p>
+          </div>
+          <span class="toss-badge" id="journal-count">최근 0건</span>
+        </div>
+        <div id="stream-feed" class="stream-feed">
+          <div class="empty-flow-card">실시간 거래 내역이 이곳에 업데이트됩니다.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 접이식 수동 전문 입력기 -->
+    <details class="toss-card manual-drawer">
+      <summary>직접 전문 필드 입력해서 단건 테스트하기</summary>
+      <form id="auth-form" class="manual-form-grid">
+        <label>
+          <span>MTI</span>
+          <select id="f-mti">
+            <option value="0100">0100 · 승인 요청</option>
+            <option value="0400">0400 · 승인 취소</option>
+            <option value="0800">0800 · 개시 점검</option>
+          </select>
+        </label>
+        <label>
+          <span>카드번호 (PAN)</span>
+          <input id="f-pan" type="text" maxlength="19" value="4000000000000010" />
+        </label>
+        <label>
+          <span>유효기간 (YYMM)</span>
+          <input id="f-expiry" type="text" maxlength="4" value="2912" />
+        </label>
+        <label>
+          <span>거래금액 (원)</span>
+          <input id="f-amount" type="text" maxlength="12" value="000000100000" />
+        </label>
+        <label>
+          <span>STAN (6자리)</span>
+          <input id="f-stan" type="text" maxlength="6" value="000001" />
+        </label>
+        <label>
+          <span>RRN (12자리)</span>
+          <input id="f-rrn" type="text" maxlength="12" value="202611020001" />
+        </label>
+        <label>
+          <span>단말기 ID</span>
+          <input id="f-term" type="text" maxlength="8" value="T0000001" />
+        </label>
+        <label>
+          <span>가맹점 ID</span>
+          <input id="f-merch" type="text" maxlength="15" value="MCH_TOSS01" />
+        </label>
+        <label>
+          <span>PIN 블록 (16 Hex)</span>
+          <input id="f-pin" type="text" maxlength="16" value="1234567890ABCDEF" />
+        </label>
+        <label>
+          <span>요청 MAC (선택)</span>
+          <input id="f-mac" type="text" maxlength="16" placeholder="자동 계산" />
+        </label>
+        <div class="manual-submit-wrap">
+          <button class="btn btn-toss-primary" type="submit">전문 전송하기</button>
+        </div>
+      </form>
+    </details>
+  </div>
+
+  <script src="/app.js" defer></script>
+</body>
+</html>

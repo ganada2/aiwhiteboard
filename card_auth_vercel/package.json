@@ -1,0 +1,18 @@
+{
+  "name": "card-auth-vercel",
+  "version": "1.1.0",
+  "description": "HPE Tandem PATHWAY Card Authorization Real-Time Flowchart Simulator on Vercel Serverless",
+  "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "dev": "node --import ./scripts/ts-loader.mjs scripts/dev-server.ts",
+    "test": "node --import ./scripts/ts-loader.mjs --test tests/cardAuth.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.0",
+    "typescript": "^5.8.2"
+  }
+}

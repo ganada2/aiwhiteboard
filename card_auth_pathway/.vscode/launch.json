@@ -1,0 +1,16 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "card_auth_server 디버깅",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/card_auth_server.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "console": "integratedTerminal"
+        }
+    ]
+}

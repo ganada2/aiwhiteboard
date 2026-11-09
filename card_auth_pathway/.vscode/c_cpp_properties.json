@@ -1,0 +1,22 @@
+{
+    "configurations": [
+        {
+            "name": "Tandem PATHWAY (Win32/GCC)",
+            "includePath": [
+                "${workspaceFolder}"
+            ],
+            "defines": [
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE",
+                "_WIN32"
+            ],
+            "windowsSdkVersion": "10.0",
+            "compilerPath": "cl.exe",
+            "cStandard": "c99",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "windows-msvc-x64"
+        }
+    ],
+    "version": 4
+}
