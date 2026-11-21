@@ -237,7 +237,7 @@ export function validateSolveResponse(rawObj: unknown): ValidationResult<SolveRe
     errors.push('clarify_question은 문자열 또는 null이어야 합니다.');
   }
 
-  if (obj.status === 'clarify' && (!obj.clarify_question || obj.clarify_question.trim() === '')) {
+  if (obj.status === 'clarify' && (typeof obj.clarify_question !== 'string' || obj.clarify_question.trim() === '')) {
     errors.push('status="clarify"일 때 clarify_question은 비어 있을 수 없습니다.');
   }
 

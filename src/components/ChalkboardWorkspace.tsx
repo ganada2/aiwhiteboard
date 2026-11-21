@@ -8,7 +8,6 @@ import {
   Grid,
   Info,
   Loader2,
-  Plus,
   RotateCcw,
   Sparkles,
   Square,

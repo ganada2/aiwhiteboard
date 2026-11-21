@@ -13,13 +13,13 @@ export function triggerAitHaptic(
 ) {
   try {
     if (type === 'success') {
-      generateHapticFeedback({ type: 'notificationSuccess' });
+      generateHapticFeedback({ type: 'success' });
     } else if (type === 'warning') {
-      generateHapticFeedback({ type: 'notificationWarning' });
+      generateHapticFeedback({ type: 'basicMedium' });
     } else if (type === 'error') {
-      generateHapticFeedback({ type: 'notificationError' });
+      generateHapticFeedback({ type: 'error' });
     } else {
-      generateHapticFeedback({ type: 'impactLight' });
+      generateHapticFeedback({ type: 'tickWeak' });
     }
   } catch {
     if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
@@ -43,7 +43,7 @@ export async function shareChalkboardSummary(params: {
     return true;
   } catch {
     try {
-      await setClipboardText({ text: message });
+      await setClipboardText(message);
       triggerAitHaptic('success');
       return true;
     } catch {
